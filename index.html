@@ -126,6 +126,28 @@
   .cz-empty{font-size:13px; color:var(--ink-soft); font-style:italic; padding:6px 0;}
   .cz-done{font-size:12px; color:var(--ink-soft); padding:5px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between; gap:8px;}
   @media (max-width:700px){ .cz-form{grid-template-columns:1fr 1fr;} .cz-form .cz-wide{grid-column:1 / -1;} }
+  /* ---------- Pestaña Control ---------- */
+  .tab-btn[data-tab="ctrl"]{background:#E4F4E8; color:#1E6B3A; font-weight:700;}
+  .tab-btn[data-tab="ctrl"].active{background:#2F6B4F; color:#fff;}
+  #panel-ctrl{background:linear-gradient(#E6F4EA,#F4FAF6);}
+  #panel-ctrl .form-card{border:2px solid #2F6B4F; border-left:8px solid #2F6B4F; background:#fff;}
+  .ct-form{display:grid; grid-template-columns:repeat(4,1fr); gap:10px;}
+  .ct-form .ct-wide{grid-column:1 / -1;}
+  .ct-form label{display:block; font-size:12px; font-weight:600; margin-bottom:3px; color:var(--ink-soft);}
+  .ct-form input{width:100%; padding:10px; border:1px solid var(--line); border-radius:8px; font-size:15px; font-family:inherit;}
+  .ct-sub{font-size:15px; font-weight:700; color:#1E6B3A; border-bottom:3px solid #2F6B4F; padding-bottom:5px; margin:22px 0 10px;}
+  .ct-kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px;}
+  .ct-kpi{background:#fff; border:1px solid #BFDCC8; border-radius:10px; padding:10px 12px; font-size:12px; color:var(--ink-soft);}
+  .ct-kpi b{display:block; font-size:19px; color:var(--ink); margin-top:2px;}
+  .ct-tabla{width:100%; border-collapse:collapse; font-size:13px; background:#fff; border-radius:10px; overflow:hidden;}
+  .ct-tabla th{background:#2F6B4F; color:#fff; padding:8px 6px; font-size:12px; text-align:right;}
+  .ct-tabla th:first-child, .ct-tabla td:first-child{text-align:left;}
+  .ct-tabla td{padding:7px 6px; border-bottom:1px solid #E1EFE5; text-align:right;}
+  .ct-tabla td button{border:0; background:none; cursor:pointer; color:#B03A2E; font-size:15px;}
+  .ct-nota{font-size:12px; color:var(--ink-soft); margin-top:8px;}
+  .ct-nav{display:flex; gap:8px; align-items:center; margin-bottom:10px;}
+  .ct-nav button{padding:7px 12px; border-radius:8px; border:1px solid var(--line); background:#fff; cursor:pointer;}
+  @media (max-width:700px){ .ct-form{grid-template-columns:1fr 1fr;} .ct-tabla{font-size:12px;} }
   .tab-btn[data-tab="cotiz"]{background:#D6E9FF; color:#0B4F9E; font-weight:700;}
   .tab-btn[data-tab="cotiz"].active{background:#1565C0; color:#fff;}
   #panel-cotiz{background:linear-gradient(#E3F0FF,#F3F8FF);}
@@ -517,6 +539,7 @@
       <button class="tab-btn active" data-tab="active">Pedidos activos</button>
       <button class="tab-btn" data-tab="history">Historial de entregas</button>
       <button class="tab-btn" data-tab="cotiz">Cotizaciones<span class="tab-badge" id="cotizBadge"></span></button>
+      <button class="tab-btn" data-tab="ctrl">Control</button>
     </div>
 
     <div class="tab-panel active" id="panel-active">
@@ -665,6 +688,31 @@
       <div class="cz-sub">Resultados de las &uacute;ltimas cotizaciones</div>
       <div class="cz-stats" id="czStats"></div>
       <div id="czCerradas" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="tab-panel" id="panel-ctrl">
+      <div class="form-card">
+        <p class="form-title">Anotar el d&iacute;a</p>
+        <div class="ct-form">
+          <div><label>Fecha</label><input id="ctFecha" type="date" /></div>
+          <div><label>Chats nuevos</label><input id="ctChats" type="number" min="0" inputmode="numeric" placeholder="0" /></div>
+          <div><label>Cotizaciones enviadas</label><input id="ctCotiz" type="number" min="0" inputmode="numeric" placeholder="0" /></div>
+          <div><label>Trabajos cerrados</label><input id="ctCerr" type="number" min="0" inputmode="numeric" placeholder="0" /></div>
+          <div><label>Lo que dejaron esos trabajos ($)</label><input id="ctIngreso" type="number" min="0" inputmode="numeric" placeholder="0" /></div>
+          <div><label>Gasto en Google Ads ($)</label><input id="ctAds" type="number" min="0" inputmode="numeric" placeholder="0" /></div>
+          <div><label>Otros gastos ($)</label><input id="ctOtros" type="number" min="0" inputmode="numeric" placeholder="0" /></div>
+          <div><label>Nota (opcional)</label><input id="ctNota" placeholder="Ej. festivo" /></div>
+          <button type="button" class="btn-add ct-wide" id="ctGuardar">Guardar d&iacute;a</button>
+        </div>
+        <p class="ct-nota">Si ya anotaste ese d&iacute;a, al guardar de nuevo se reemplaza con los datos nuevos.</p>
+      </div>
+      <div class="ct-sub">Resumen</div>
+      <div class="ct-nav"><button type="button" id="ctAnt">&larr;</button><b id="ctSemTxt"></b><button type="button" id="ctSig">&rarr;</button><button type="button" id="ctHoy">Esta semana</button></div>
+      <div class="ct-kpis" id="ctKpis"></div>
+      <div class="ct-sub">D&iacute;as de la semana</div>
+      <div style="overflow-x:auto;"><table class="ct-tabla" id="ctTabla"></table></div>
+      <div class="ct-sub">Total del mes</div>
+      <div class="ct-kpis" id="ctMes"></div>
     </div>
 
     <div class="tab-panel" id="panel-history">
@@ -894,6 +942,8 @@ async function loadAll(){
   await imgCargarTodo();
   await cargarCatalogo();
   await cargarCotiz();
+  await cargarControl();
+  iniciarControl();
   iniciarImgForm();
   iniciarFileForm();
   iniciarItemsForm();
@@ -1705,7 +1755,7 @@ document.getElementById('syncNowBtn').addEventListener('click', () => {
 });
 
 document.getElementById('downloadBackupBtn').addEventListener('click', () => {
-  const data = {pedidos, metaDiaria, cotizaciones, imagenes: imgCache, archivos: archivosParaBackup(), exportadoEl: new Date().toISOString()};
+  const data = {pedidos, metaDiaria, cotizaciones, control, imagenes: imgCache, archivos: archivosParaBackup(), exportadoEl: new Date().toISOString()};
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1738,6 +1788,7 @@ document.getElementById('restoreFile').addEventListener('change', (e) => {
         Object.keys(pendingRestore.imagenes || {}).forEach(k => imgGuardar(k, pendingRestore.imagenes[k]));
         archivosDesdeBackup(pendingRestore.archivos);
         if(Array.isArray(pendingRestore.cotizaciones)){ cotizaciones = pendingRestore.cotizaciones; await guardarCotiz(); }
+        if(Array.isArray(pendingRestore.control)){ control = pendingRestore.control; await guardarControl(); renderControl(); }
         metaDiaria = pendingRestore.metaDiaria || 60;
         document.getElementById('metaDiaria').value = metaDiaria;
         await savePedidos();
@@ -1778,6 +1829,94 @@ async function guardarCotiz(){
 async function cargarCotiz(){
   try{ const c = await window.storage.get('cotizaciones'); cotizaciones = c ? (JSON.parse(c.value) || []) : []; }catch(e){ cotizaciones = []; }
 }
+
+// =====================================================================
+//  CONTROL: registro diario de chats, trabajos, ingresos y gastos
+// =====================================================================
+let control = [];
+let ctSemanaIni = null;   // lunes de la semana que se está viendo (YYYY-MM-DD)
+async function guardarControl(){
+  try{ await window.storage.set('control', JSON.stringify(control)); setStatus('Guardado'); }catch(e){ console.error(e); setStatus('Error al guardar'); }
+}
+async function cargarControl(){
+  try{ const c = await window.storage.get('control'); control = c ? (JSON.parse(c.value) || []) : []; }catch(e){ control = []; }
+}
+function ctLunes(str){
+  const d = new Date(str + 'T00:00:00'); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); return fechaLocal(d);
+}
+function ctSumaDias(str, n){ const d = new Date(str + 'T00:00:00'); d.setDate(d.getDate() + n); return fechaLocal(d); }
+function ctTotales(lista){
+  const t = {chats:0, cotiz:0, cerr:0, ingreso:0, ads:0, otros:0};
+  lista.forEach(x => { t.chats += x.chats||0; t.cotiz += x.cotiz||0; t.cerr += x.cerr||0; t.ingreso += x.ingreso||0; t.ads += x.ads||0; t.otros += x.otros||0; });
+  return t;
+}
+function ctKpisHtml(t){
+  const div = (a, b) => b > 0 ? fmt(Math.round(a / b)) : '—';
+  const pct = (a, b) => b > 0 ? Math.round(a * 100 / b) + ' %' : '—';
+  const gastoTotal = t.ads + t.otros;
+  const retorno = t.ads > 0 ? (t.ingreso / t.ads).toFixed(1).replace('.', ',') + ' veces' : '—';
+  const items = [
+    ['Chats nuevos', t.chats], ['Cotizaciones', t.cotiz], ['Trabajos cerrados', t.cerr],
+    ['De chats a trabajos', pct(t.cerr, t.chats)],
+    ['Ingresos', fmt(t.ingreso)], ['Gasto Google Ads', fmt(t.ads)], ['Otros gastos', fmt(t.otros)],
+    ['Costo por chat (Ads)', div(t.ads, t.chats)], ['Costo por trabajo (Ads)', div(t.ads, t.cerr)],
+    ['Ingreso por cada $ en Ads', retorno], ['Ingresos menos gastos', fmt(t.ingreso - gastoTotal)]
+  ];
+  return items.map(([a, b]) => `<div class="ct-kpi">${a}<b>${b}</b></div>`).join('');
+}
+function renderControl(){
+  if(!document.getElementById('ctKpis')) return;
+  if(!ctSemanaIni) ctSemanaIni = ctLunes(fechaLocal());
+  const ini = ctSemanaIni, fin = ctSumaDias(ini, 6);
+  document.getElementById('ctSemTxt').textContent = 'Semana del ' + fmtCorta(ini) + ' al ' + fmtCorta(fin);
+  const sem = control.filter(x => x.fecha >= ini && x.fecha <= fin).sort((a, b) => a.fecha < b.fecha ? -1 : 1);
+  document.getElementById('ctKpis').innerHTML = ctKpisHtml(ctTotales(sem));
+  const dias = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  let h = '<thead><tr><th>Día</th><th>Chats</th><th>Cot.</th><th>Trab.</th><th>Ingreso</th><th>Ads</th><th>Otros</th><th></th></tr></thead><tbody>';
+  for(let i = 0; i < 7; i++){
+    const f = ctSumaDias(ini, i), x = control.find(c => c.fecha === f);
+    h += `<tr><td>${dias[i]} ${f.slice(8)}${x && x.nota ? ' <small title="' + escapeHtml(x.nota) + '">📝</small>' : ''}</td>` +
+      (x ? `<td>${x.chats||0}</td><td>${x.cotiz||0}</td><td>${x.cerr||0}</td><td>${fmt(x.ingreso||0)}</td><td>${fmt(x.ads||0)}</td><td>${fmt(x.otros||0)}</td><td><button type="button" data-ct-edit="${f}" title="Editar">✎</button><button type="button" data-ct-del="${f}" title="Borrar">✕</button></td>`
+         : '<td colspan="7" style="text-align:center;color:#999;">sin datos</td>') + '</tr>';
+  }
+  document.getElementById('ctTabla').innerHTML = h + '</tbody>';
+  const m = ini.slice(0, 7);
+  const mesLista = control.filter(x => x.fecha.slice(0, 7) === m);
+  document.getElementById('ctMes').innerHTML = ctKpisHtml(ctTotales(mesLista));
+}
+function iniciarControl(){
+  if(!document.getElementById('ctGuardar')) return;
+  document.getElementById('ctFecha').value = fechaLocal();
+  const num = (id) => Math.max(0, Math.round(Number(document.getElementById(id).value) || 0));
+  const ids = ['ctChats','ctCotiz','ctCerr','ctIngreso','ctAds','ctOtros','ctNota'];
+  document.getElementById('ctGuardar').addEventListener('click', async () => {
+    const fecha = document.getElementById('ctFecha').value || fechaLocal();
+    const reg = {fecha, chats:num('ctChats'), cotiz:num('ctCotiz'), cerr:num('ctCerr'), ingreso:num('ctIngreso'), ads:num('ctAds'), otros:num('ctOtros'), nota:document.getElementById('ctNota').value.trim()};
+    control = control.filter(x => x.fecha !== fecha); control.push(reg);
+    await guardarControl();
+    ids.forEach(i => document.getElementById(i).value = '');
+    ctSemanaIni = ctLunes(fecha); renderControl();
+  });
+  document.getElementById('ctAnt').addEventListener('click', () => { ctSemanaIni = ctSumaDias(ctSemanaIni, -7); renderControl(); });
+  document.getElementById('ctSig').addEventListener('click', () => { ctSemanaIni = ctSumaDias(ctSemanaIni, 7); renderControl(); });
+  document.getElementById('ctHoy').addEventListener('click', () => { ctSemanaIni = ctLunes(fechaLocal()); renderControl(); });
+  document.getElementById('ctTabla').addEventListener('click', async (e) => {
+    const ed = e.target.closest('[data-ct-edit]'), del = e.target.closest('[data-ct-del]');
+    if(ed){
+      const x = control.find(c => c.fecha === ed.dataset.ctEdit); if(!x) return;
+      document.getElementById('ctFecha').value = x.fecha;
+      document.getElementById('ctChats').value = x.chats||''; document.getElementById('ctCotiz').value = x.cotiz||''; document.getElementById('ctCerr').value = x.cerr||'';
+      document.getElementById('ctIngreso').value = x.ingreso||''; document.getElementById('ctAds').value = x.ads||''; document.getElementById('ctOtros').value = x.otros||'';
+      document.getElementById('ctNota').value = x.nota||'';
+      document.getElementById('ctFecha').scrollIntoView({behavior:'smooth', block:'center'});
+    }
+    if(del && confirm('¿Borrar los datos de ese día?')){
+      control = control.filter(c => c.fecha !== del.dataset.ctDel); await guardarControl(); renderControl();
+    }
+  });
+  renderControl();
+}
+
 // Días que deben pasar desde el último contacto según cuántos seguimientos ya se hicieron
 const CZ_ESPERA = [1, 3, 5];
 function czPendientes(){ return cotizaciones.filter(c => c.estado === 'pendiente'); }
