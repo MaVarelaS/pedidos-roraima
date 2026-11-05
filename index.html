@@ -441,6 +441,9 @@
   .it-add{background:none; border:1px dashed var(--bronze); color:var(--bronze-dark); border-radius:6px; padding:6px 12px; cursor:pointer; font-size:12px; margin-top:2px;}
   .it-add:hover{background:var(--gold-light);}
   .it-total{text-align:right; font-size:12.5px; margin-top:8px; color:var(--ink);}
+  .it-mayor{font-size:12px; margin-top:8px; padding:7px 10px; border-radius:8px; background:#E4F4E8; color:#1E6B3A; border:1px solid #BFDCC8;}
+  .it-mayor:empty{display:none;}
+  .cat-sm{display:flex; gap:6px; align-items:center; font-size:12px; color:var(--ink-soft); margin:4px 0 6px;}
   input[readonly].auto-calc{background:var(--gold-light); color:var(--ink-soft);}
   .btn-sec{
     margin-top:12px; margin-left:8px; font-size:13px; font-weight:500; padding:9px 18px;
@@ -2092,6 +2095,7 @@ function itemsEditorHtml(items){
     <div class="it-head"><span>Descripción</span><span>Cant.</span><span>Valor unit.</span><span style="text-align:right;">Subtotal</span><span></span></div>
     <div class="it-rows">${filas}</div>
     <button type="button" class="it-add">+ Agregar línea</button>
+    <div class="it-mayor"></div>
     <div class="it-total">Total del detalle: <b class="it-total-val">${fmt(total)}</b></div>`;
 }
 function leerItems(box){
@@ -2101,7 +2105,50 @@ function leerItems(box){
     val: parseFloat(r.querySelector('.it-val').value) || 0
   })).filter(it => it.desc || it.cant || it.val);
 }
+// ¿Esta línea suma al total de bordados del pedido? (según el catálogo; si no está en el catálogo, por el nombre)
+function catCuenta(c){
+  if(!c) return false;
+  if(c.sm !== undefined) return !!c.sm;
+  return /bordado|manga|logo|promedan|aplique/i.test(c.n || '') && !esDiseno({desc: c.n});
+}
+function catDe(desc){
+  const d = (desc || '').trim().toLowerCase();
+  if(!d) return null;
+  let mejor = null;
+  catalogo.forEach(c => {
+    const n = (c.n || '').trim().toLowerCase();
+    if(n && d.startsWith(n) && (!mejor || n.length > mejor.n.length)) mejor = {n, c};
+  });
+  return mejor ? mejor.c : null;
+}
+function lineaCuenta(desc){
+  if(esDiseno({desc})) return false;
+  const c = catDe(desc);
+  if(c) return catCuenta(c);
+  return /bordado|manga/i.test(desc || '');
+}
+// Reajusta el precio por cantidad de todas las líneas (que no se hayan cambiado a mano) usando el TOTAL de bordados del pedido
+function repreciarItems(box){
+  const filas = [...box.querySelectorAll('.it-row')];
+  let totalB = 0;
+  filas.forEach(r => { if(lineaCuenta(r.querySelector('.it-desc').value)) totalB += parseFloat(r.querySelector('.it-cant').value) || 0; });
+  filas.forEach(r => {
+    const val = r.querySelector('.it-val'); if(val.dataset.manual === '1') return;
+    const desc = r.querySelector('.it-desc').value, c = parseFloat(r.querySelector('.it-cant').value) || 0;
+    if(!c) return;
+    const q = lineaCuenta(desc) ? Math.max(totalB, c) : c;
+    const pr = precioPara(desc, q);
+    if(pr != null) val.value = pr;
+  });
+  return totalB;
+}
 function recalcItems(box){
+  const totalB = repreciarItems(box);
+  const nota = box.querySelector('.it-mayor');
+  if(nota){
+    const lineas = [...box.querySelectorAll('.it-row')].filter(r => lineaCuenta(r.querySelector('.it-desc').value) && (parseFloat(r.querySelector('.it-cant').value) || 0) > 0).length;
+    nota.innerHTML = totalB > 0 && lineas > 1 ? `Bordados en este pedido: <b>${totalB}</b>. El precio por cantidad se calcula con este total.` : '';
+  }
   let cant = 0, total = 0, n = 0;
   box.querySelectorAll('.it-row').forEach(r => {
     const c = parseFloat(r.querySelector('.it-cant').value) || 0;
@@ -2253,6 +2300,7 @@ function renderCatalogo(){
   box.innerHTML = catalogo.map(c => `<div class="cat-item">
     <div class="cat-head"><input class="cat-n" placeholder="Servicio" value="${escapeHtml(c.n || '')}" />
       <button type="button" class="it-del cat-del" title="Quitar este servicio">&times;</button></div>
+    <label class="cat-sm"><input type="checkbox" class="cat-smc" ${catCuenta(c) ? 'checked' : ''} /> Suma al total de bordados del pedido (para el precio por cantidad)</label>
     ${(c.t && c.t.length ? c.t : [[1, '']]).map(t => `<div class="cat-tier"><span>Desde</span>
       <input class="cat-min" type="number" min="1" step="1" value="${t[0]}" /><span>unidades</span>
       <input class="cat-pr" type="number" min="0" step="100" placeholder="Precio c/u" value="${t[1] === '' ? '' : t[1]}" />
@@ -2282,6 +2330,7 @@ async function cargarCatalogo(){
 function leerCatalogoUI(){
   catalogo = [...document.querySelectorAll('#catRows .cat-item')].map(it => ({
     n: it.querySelector('.cat-n').value.trim(),
+    sm: it.querySelector('.cat-smc').checked,
     t: [...it.querySelectorAll('.cat-tier')].map(r => [parseInt(r.querySelector('.cat-min').value) || 1, parseFloat(r.querySelector('.cat-pr').value) || 0])
         .sort((a, b) => a[0] - b[0])
   }));
@@ -2290,6 +2339,7 @@ function leerCatalogoUI(){
 (function(){
   const rows = document.getElementById('catRows');
   rows.addEventListener('input', leerCatalogoUI);
+  rows.addEventListener('change', leerCatalogoUI);
   rows.addEventListener('click', (e) => {
     const t = e.target, item = t.closest('.cat-item');
     if(!item) return;
@@ -2320,7 +2370,8 @@ function itemAuto(e){
   const p = precioPara(desc.value, parseFloat(cant.value) || 1);
   if(p != null){
     val.value = p;
-    if(!cant.value) cant.value = 1;
+    // Solo se pone 1 por defecto al elegir el servicio; al borrar la cantidad para escribir otra, se deja vacía
+    if(e.target.classList.contains('it-desc') && !cant.value) cant.value = 1;
   }
 }
 // "Crear diseño" agrega / quita la línea "Diseño nuevo" con su precio
