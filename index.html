@@ -341,6 +341,7 @@
   .capacity-row .cap-remaining{text-align:right; font-size:11px; font-weight:600; color:var(--brand-green); white-space:nowrap;}
   .capacity-row.near .cap-remaining{color:var(--ready);}
   .capacity-row.full .cap-remaining{color:var(--brand-green); font-weight:600;}
+  .capacity-row .cap-hechas{color:#1E6B3A; font-weight:700;}
   .capacity-hint{font-size:12px; margin-top:4px; padding:6px 8px; border-radius:6px;}
   .capacity-hint.ok{color:var(--income); background:var(--income-bg);}
   .capacity-hint.near{color:var(--ready); background:var(--ready-bg);}
@@ -979,6 +980,7 @@ function paymentBadge(p){
   if(p.estadoPago === 'abona') return `<span class="badge pay-partial">Abona ${fmt(p.montoAbonado)} &middot; resta ${fmt(restante(p))}</span>`;
   return `<span class="badge pay-pending">Pago pendiente</span>`;
 }
+// Carga del día = TODOS los pedidos prometidos para esa fecha (pendientes y ya entregados)
 function cargaPorFecha(fecha, excludeId){
   return pedidos
     .filter(p => p.fechaPromesa === fecha && p.id !== excludeId)
@@ -997,7 +999,8 @@ function renderCapacityPanel(previewDate, previewCantidad){
   previewCantidad = previewCantidad || 0;
   const list = document.getElementById('capacityList');
   const today = todayStr();
-  const dateSet = new Set(pedidos.filter(p => !p.entregado && p.fechaPromesa && p.fechaPromesa >= today).map(p => p.fechaPromesa));
+  // Se incluyen también los pedidos ya entregados: la carga del día no baja al marcar "Entregado"
+  const dateSet = new Set(pedidos.filter(p => p.fechaPromesa && p.fechaPromesa >= today).map(p => p.fechaPromesa));
   if(previewDate && previewDate >= today) dateSet.add(previewDate);
   const dates = [...dateSet].sort();
   if(dates.length === 0){
@@ -1016,6 +1019,8 @@ function renderCapacityPanel(previewDate, previewCantidad){
     else if(total >= metaDiaria * 0.8) cls = 'near';
     const faltan = metaDiaria - total;
     const faltanTexto = faltan <= 0 ? '¡Meta llena!' : `Faltan ${faltan}`;
+    const hechas = pedidos.filter(p => p.entregado && p.fechaPromesa === ds).reduce((s,p) => s + (Number(p.cantidad)||0), 0);
+    const hechasTexto = hechas > 0 ? ` <span class="cap-hechas">&middot; ✓ ${hechas} entregadas</span>` : '';
     const previewTag = extra > 0 ? ` <span class="cap-preview-tag">+${extra} nuevo</span>` : '';
     return `<div class="capacity-row ${cls}">
       <span class="cap-date">${ds}${previewTag}</span>
@@ -1024,7 +1029,7 @@ function renderCapacityPanel(previewDate, previewCantidad){
         ${extra > 0 ? `<span class="capacity-bar-preview" style="width:${extraPct}%; left:${basePct}%;"></span>` : ''}
       </span>
       <span class="cap-count">${total}/${metaDiaria}</span>
-      <span class="cap-remaining">${faltanTexto}</span>
+      <span class="cap-remaining">${faltanTexto}${hechasTexto}</span>
     </div>`;
   }).join('');
 
@@ -2077,13 +2082,18 @@ document.getElementById('fRecibo').addEventListener('input', () => {
 });
 
 // ---------- Detalle del pedido (líneas) ----------
+// ¿Ese valor es uno de los precios de la lista para ese servicio? Entonces no es un precio "a mano" y se puede recalcular
+function esPrecioCatalogo(desc, v){
+  const c = catDe(desc);
+  return !!(c && (c.t || []).some(t => Number(t[1]) === Number(v)));
+}
 function itemRowHtml(it){
   it = it || {};
   const c = Number(it.cant) || 0, v = Number(it.val) || 0;
   return `<div class="it-row">
     <input class="it-desc" list="catList" placeholder="Ej. Bordado, Diseño nuevo…" value="${escapeHtml(it.desc || '')}" />
     <input class="it-cant" type="number" min="1" step="1" placeholder="Cant." value="${c || ''}" />
-    <input class="it-val" type="number" min="0" step="1" placeholder="Valor unit." value="${v || ''}" ${v ? 'data-manual="1"' : ''} />
+    <input class="it-val" type="number" min="0" step="1" placeholder="Valor unit." value="${v || ''}" ${v && !esPrecioCatalogo(it.desc, v) ? 'data-manual="1"' : ''} />
     <span class="it-sub">${fmt(c * v)}</span>
     <button type="button" class="it-del" title="Quitar esta línea">&times;</button>
   </div>`;
@@ -2127,6 +2137,8 @@ function lineaCuenta(desc){
   if(c) return catCuenta(c);
   return /bordado|manga/i.test(desc || '');
 }
+// Las camisetas (polo / cuello redondo) se cobran según SU PROPIA cantidad en esa línea, no según el total de bordados
+function esCamiseta(desc){ const c = catDe(desc); return /^(polo|cuello redondo)\b/i.test(((c && c.n) || desc || '').trim()); }
 // Reajusta el precio por cantidad de todas las líneas (que no se hayan cambiado a mano) usando el TOTAL de bordados del pedido
 function repreciarItems(box){
   const filas = [...box.querySelectorAll('.it-row')];
@@ -2136,7 +2148,7 @@ function repreciarItems(box){
     const val = r.querySelector('.it-val'); if(val.dataset.manual === '1') return;
     const desc = r.querySelector('.it-desc').value, c = parseFloat(r.querySelector('.it-cant').value) || 0;
     if(!c) return;
-    const q = lineaCuenta(desc) ? Math.max(totalB, c) : c;
+    const q = esCamiseta(desc) ? c : (lineaCuenta(desc) ? Math.max(totalB, c) : c);
     const pr = precioPara(desc, q);
     if(pr != null) val.value = pr;
   });
@@ -2147,7 +2159,7 @@ function recalcItems(box){
   const nota = box.querySelector('.it-mayor');
   if(nota){
     const lineas = [...box.querySelectorAll('.it-row')].filter(r => lineaCuenta(r.querySelector('.it-desc').value) && (parseFloat(r.querySelector('.it-cant').value) || 0) > 0).length;
-    nota.innerHTML = totalB > 0 && lineas > 1 ? `Bordados en este pedido: <b>${totalB}</b>. El precio por cantidad se calcula con este total.` : '';
+    nota.innerHTML = totalB > 0 && lineas > 1 ? `Bordados en este pedido: <b>${totalB}</b>. El precio por cantidad de los bordados y mangas se calcula con este total; las camisetas se cobran según su propia cantidad.` : '';
   }
   let cant = 0, total = 0, n = 0;
   box.querySelectorAll('.it-row').forEach(r => {
@@ -2364,9 +2376,15 @@ function itemAuto(e){
   const row = e.target.closest('.it-row');
   if(!row) return;
   const val = row.querySelector('.it-val'), cant = row.querySelector('.it-cant'), desc = row.querySelector('.it-desc');
-  if(e.target.classList.contains('it-val')){ val.dataset.manual = e.target.value ? '1' : ''; return; }
+  if(e.target.classList.contains('it-val')){
+    // Escribir un precio lo deja fijo; borrarlo vuelve al precio de la lista
+    if(e.target.value){ val.dataset.manual = '1'; return; }
+    val.dataset.manual = '';
+  }
+  // Al cambiar el servicio, vuelve a tomar el precio de la lista
+  if(e.target.classList.contains('it-desc')) val.dataset.manual = '';
   if(val.dataset.manual === '1') return;
-  if(!e.target.classList.contains('it-desc') && !e.target.classList.contains('it-cant')) return;
+  if(!e.target.classList.contains('it-desc') && !e.target.classList.contains('it-cant') && !e.target.classList.contains('it-val')) return;
   const p = precioPara(desc.value, parseFloat(cant.value) || 1);
   if(p != null){
     val.value = p;
